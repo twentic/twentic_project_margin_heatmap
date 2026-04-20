@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ================================================================
+         NEW KANBAN  –  primary view based on project kanban
+         (base kanban is untouched; only this view shows the ribbons)
+    ================================================================= -->
+    <record id="view_project_kanban_profitability" model="ir.ui.view">
+        <field name="name">project.project.kanban.profitability</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+
+            <!-- Declare the fields needed by the ribbon widgets -->
+            <xpath expr="//field[@name='allow_milestones']" position="before">
+                <field name="profitability_level"/>
+                <field name="profitability_margin_display"/>
+            </xpath>
+
+            <!-- Margin badge inside the card. -->
+            <xpath expr="//t[@t-name='card']//div[hasclass('o_project_kanban_main')]" position="inside">
+                <field name="profitability_margin_display"
+                       widget="badge"
+                       decoration-success="profitability_level == '3'"
+                       decoration-warning="profitability_level == '2'"
+                       decoration-danger="profitability_level == '1'"
+                       decoration-muted="profitability_level == '0'"
+                       invisible="not profitability_level"/>
+            </xpath>
+
+            <!-- Colour ribbons per profitability level. -->
+            <!-- <xpath expr="//t[@t-name='card']//div[hasclass('o_project_kanban_main')]" position="before">
+                <widget name="web_ribbon"
+                        title="Good"
+                        bg_color="bg-success"
+                        invisible="profitability_level != '3'"/>
+                <widget name="web_ribbon"
+                        title="Medium"
+                        bg_color="bg-warning"
+                        invisible="profitability_level != '2'"/>
+                <widget name="web_ribbon"
+                        title="Low"
+                        bg_color="bg-danger"
+                        invisible="profitability_level != '1'"/>
+                <widget name="web_ribbon"
+                        title="Negative"
+                        bg_color="bg-secondary"
+                        invisible="profitability_level != '0'"/>
+            </xpath> -->
+
+        </field>
+    </record>
+
+    <!-- ================================================================
+         NEW LIST  –  primary view based on project list
+         (base list is untouched; only this view shows the badge column)
+    ================================================================= -->
+    <record id="view_project_list_profitability" model="ir.ui.view">
+        <field name="name">project.project.list.profitability</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+
+            <!-- Insert profitability columns before the "View Tasks" button -->
+            <xpath expr="//button[@name='action_view_tasks']" position="before">
+                <field name="profitability_margin"
+                       string="Margin (%)"
+                       optional="show"/>
+                <field name="profitability_level"
+                       widget="badge"
+                       decoration-success="profitability_level == '3'"
+                       decoration-warning="profitability_level == '2'"
+                       decoration-danger="profitability_level == '1'"
+                       decoration-muted="profitability_level == '0'"
+                       optional="show"/>
+                <button name="action_recompute_profitability"
+                        type="object"
+                        string="Recompute"
+                        icon="fa-refresh"
+                        class="btn-secondary btn-sm"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SEARCH VIEW INHERIT  –  add "Profitability Level" group-by
+         to the standard project search panel (used everywhere)
+    ================================================================= -->
+    <record id="view_project_search_profitability_inherit" model="ir.ui.view">
+        <field name="name">project.project.search.profitability.inherit</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[last()]" position="inside">
+                <filter name="group_by_profitability_level"
+                        string="Profitability Level"
+                        context="{'group_by': 'profitability_level'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SEARCH VIEW  –  standalone for the Reporting action
+    ================================================================= -->
+    <record id="view_project_profitability_search" model="ir.ui.view">
+        <field name="name">project.project.profitability.search</field>
+        <field name="model">project.project</field>
+        <field name="arch" type="xml">
+            <search string="Project Profitability">
+
+                <field name="name"       string="Project"/>
+                <field name="partner_id" string="Customer"/>
+                <field name="user_id"    string="Project Manager"/>
+
+                <separator/>
+
+                <filter name="filter_good"
+                        string="Good"
+                        domain="[('profitability_level', '=', '3')]"/>
+                <filter name="filter_medium"
+                        string="Medium"
+                        domain="[('profitability_level', '=', '2')]"/>
+                <filter name="filter_low"
+                        string="Low"
+                        domain="[('profitability_level', '=', '1')]"/>
+                <filter name="filter_negative"
+                        string="Negative"
+                        domain="[('profitability_level', '=', '0')]"/>
+
+                <group expand="1" string="Group By">
+                    <filter name="group_by_profitability_level"
+                            string="Profitability Level"
+                            context="{'group_by': 'profitability_level'}"/>
+                    <filter name="group_by_partner"
+                            string="Customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_by_user"
+                            string="Project Manager"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter name="group_by_stage"
+                            string="Stage"
+                            context="{'group_by': 'stage_id'}"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         ACTION  –  Reporting menu, kanban first, grouped by level
+    ================================================================= -->
+    <record id="action_project_profitability" model="ir.actions.act_window">
+        <field name="name">Project Profitability</field>
+        <field name="res_model">project.project</field>
+        <field name="view_mode">kanban,list</field>
+        <field name="search_view_id" ref="view_project_profitability_search"/>
+        <field name="context">{'group_by': ['profitability_level']}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No projects found.</p>
+            <p>Link Sale Orders to projects, then click <b>Recompute</b> to
+               calculate the profitability margin.</p>
+        </field>
+    </record>
+
+    <!-- Kanban first (sequence 1) -->
+    <record id="action_project_profitability_view_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_project_kanban_profitability"/>
+        <field name="act_window_id" ref="action_project_profitability"/>
+    </record>
+
+    <!-- List second (sequence 2) -->
+    <record id="action_project_profitability_view_list" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_project_list_profitability"/>
+        <field name="act_window_id" ref="action_project_profitability"/>
+    </record>
+
+    <!-- ================================================================
+         MENU ITEM  –  under Project > Reporting
+    ================================================================= -->
+    <menuitem id="menu_project_profitability"
+              name="Project Profitability"
+              parent="project.menu_project_report"
+              action="action_project_profitability"
+              sequence="25"/>
+
+</odoo>
